@@ -74,3 +74,19 @@ function doGet(e) {
   var ss = getSpreadsheet();
   return ContentService.createTextOutput("Ayush Mittal website logger is running.\nLeads sheet: " + ss.getUrl()).setMimeType(ContentService.MimeType.TEXT);
 }
+
+// Run once from the Apps Script editor to grant access and create the leads sheet.
+function setup() {
+  var ss = getSpreadsheet();
+  Object.keys(SHEETS).forEach(function (type) {
+    var cfg = SHEETS[type];
+    if (!ss.getSheetByName(cfg.name)) {
+      var sh = ss.insertSheet(cfg.name);
+      sh.appendRow(cfg.cols);
+      sh.setFrozenRows(1);
+    }
+  });
+  var blank = ss.getSheetByName("Sheet1");
+  if (blank && ss.getSheets().length > 1 && blank.getLastRow() === 0) ss.deleteSheet(blank);
+  Logger.log("Leads sheet: " + ss.getUrl());
+}
