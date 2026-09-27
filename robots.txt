@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ayush-mittal-product.vercel.app/sitemap.xml
