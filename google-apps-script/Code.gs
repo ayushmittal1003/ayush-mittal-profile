@@ -14,14 +14,30 @@ var SHEETS = {
   chatbot_log:  { name: "Chatbot Log",   cols: ["Timestamp", "Session", "Page", "Sender", "Message"] }
 };
 
+var SHEET_TITLE = "Ayush Mittal — Website Leads";
+
+// Works bound to a sheet, or standalone: creates the sheet on first use and remembers its ID.
+function getSpreadsheet() {
+  var bound = SpreadsheetApp.getActiveSpreadsheet();
+  if (bound) return bound;
+  var props = PropertiesService.getScriptProperties();
+  var id = props.getProperty("SHEET_ID");
+  if (id) return SpreadsheetApp.openById(id);
+  var ss = SpreadsheetApp.create(SHEET_TITLE);
+  props.setProperty("SHEET_ID", ss.getId());
+  return ss;
+}
+
 function doPost(e) {
+  var lock = LockService.getScriptLock();
   try {
     var body = JSON.parse(e.postData.contents);
     var type = body.type;
     var cfg = SHEETS[type];
     if (!cfg) return ContentService.createTextOutput(JSON.stringify({ status: "ignored" })).setMimeType(ContentService.MimeType.JSON);
 
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    lock.waitLock(20000);
+    var ss = getSpreadsheet();
     var sheet = ss.getSheetByName(cfg.name);
     if (!sheet) {
       sheet = ss.insertSheet(cfg.name);
@@ -37,14 +53,24 @@ function doPost(e) {
     } else if (type === "chatbot_log") {
       row = [new Date(), body.session || "", body.page || "", body.sender || "", body.message || ""];
     }
-    sheet.appendRow(row);
+    sheet.appendRow(row.map(safe));
 
     return ContentService.createTextOutput(JSON.stringify({ status: "ok" })).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ status: "error", message: String(err) })).setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
   }
 }
 
+// Visitor text starting with = + - @ would otherwise run as a spreadsheet formula.
+function safe(v) {
+  if (typeof v !== "string") return v;
+  v = v.slice(0, 45000);
+  return /^[=+\-@]/.test(v) ? "'" + v : v;
+}
+
 function doGet(e) {
-  return ContentService.createTextOutput("Ayush Mittal website logger is running.").setMimeType(ContentService.MimeType.TEXT);
+  var ss = getSpreadsheet();
+  return ContentService.createTextOutput("Ayush Mittal website logger is running.\nLeads sheet: " + ss.getUrl()).setMimeType(ContentService.MimeType.TEXT);
 }
