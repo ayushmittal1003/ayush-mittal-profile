@@ -8,7 +8,7 @@
   "use strict";
 
   // Paste your Google Apps Script Web App URL here (see google-apps-script/SETUP.md).
-  var GAS_URL = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
+  var GAS_URL = "https://script.google.com/macros/s/AKfycbxRj4fhEH8iGfrQiPPqEbjIPeO_pVz445UKKCTM9mYNXfVl1C0ZWzk7c8hqGvAwBz7SkQ/exec";
   var CHAT_API = "/api/chat";
 
   var EMAIL = "ayushproduct1210@gmail.com";
