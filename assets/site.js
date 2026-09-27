@@ -35,14 +35,20 @@
     });
     var all = track.children;
     var reduced = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-    var idx = 0, timer = null, paused = false;
+    var INTERVAL = 2600, HOLD = 3000;
+    var idx = 0, timer = null, visible = false, keyboard = false, heldUntil = 0, started = false;
     var pad = function(v){ return (v < 10 ? "0" : "") + v; };
 
     function step(){ return all[1].offsetLeft - all[0].offsetLeft; }
+    function label(){
+      var held = Date.now() < heldUntil || keyboard;
+      root.classList.toggle("held", held);
+      count.textContent = (held ? "Paused · " : "") + "Scene " + pad((idx % n) + 1) + " / " + pad(n);
+    }
     function place(animate){
-      track.classList.toggle("moving", !!animate);
+      track.classList.toggle("moving", !!animate && !reduced);
       track.style.transform = "translateX(" + (-idx * step()) + "px)";
-      count.textContent = "Scene " + pad((idx % n) + 1) + " / " + pad(n);
+      label();
     }
     function flash(i){
       var f = all[i];
@@ -52,31 +58,76 @@
     function go(delta){
       if (delta < 0 && idx === 0){ idx = n; place(false); void track.offsetWidth; }
       idx += delta;
-      place(!reduced);
+      place(true);
       flash(idx);
       if (reduced && idx >= n){ idx = 0; place(false); }
     }
     track.addEventListener("transitionend", function(){
       if (idx >= n){ idx = 0; place(false); }
     });
-    function tick(){ if (!paused) go(1); }
-    function start(){ if (!reduced && !timer) timer = setInterval(tick, 3000); }
 
-    document.getElementById("reel-next").addEventListener("click", function(){ go(1); });
-    document.getElementById("reel-prev").addEventListener("click", function(){ go(-1); });
-    root.addEventListener("mouseenter", function(){ paused = true; });
-    root.addEventListener("mouseleave", function(){ paused = false; });
-    root.addEventListener("focusin", function(){ paused = true; });
-    root.addEventListener("focusout", function(){ paused = false; });
+    function schedule(delay){
+      clearTimeout(timer);
+      if (!started || !visible || document.hidden) return;
+      timer = setTimeout(function(){
+        if (keyboard) { label(); return; }
+        var wait = heldUntil - Date.now();
+        if (wait > 0) { schedule(wait); return; }
+        go(1);
+        schedule(INTERVAL);
+      }, delay);
+    }
+    function hold(){
+      heldUntil = Date.now() + HOLD;
+      label();
+      schedule(HOLD);
+      setTimeout(label, HOLD + 20);
+    }
+
+    document.getElementById("reel-next").addEventListener("click", function(ev){ ev.stopPropagation(); go(1); hold(); });
+    document.getElementById("reel-prev").addEventListener("click", function(ev){ ev.stopPropagation(); go(-1); hold(); });
+
+    var strip = root.querySelector(".reel-strip");
+    var sx = null, sy = null;
+    strip.addEventListener("touchstart", function(ev){ sx = ev.touches[0].clientX; sy = ev.touches[0].clientY; }, { passive: true });
+    strip.addEventListener("touchend", function(ev){
+      if (sx === null) return;
+      var dx = ev.changedTouches[0].clientX - sx, dy = ev.changedTouches[0].clientY - sy;
+      sx = null;
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? 1 : -1);
+      hold();
+    });
+    strip.addEventListener("click", function(){ hold(); });
+
+    root.addEventListener("focusin", function(ev){ if (ev.target.matches && ev.target.matches(":focus-visible")){ keyboard = true; label(); } });
+    root.addEventListener("focusout", function(){ if (keyboard){ keyboard = false; label(); schedule(INTERVAL); } });
+    document.addEventListener("visibilitychange", function(){ schedule(INTERVAL); });
     window.addEventListener("resize", function(){ place(false); });
 
-    if (reduced){ root.classList.remove("intro"); place(false); return; }
-    originals.forEach(function(f, i){ setTimeout(function(){ f.classList.add("in"); }, 200 + i * 360); });
-    setTimeout(function(){
-      root.classList.remove("intro");
-      originals.forEach(function(f){ f.classList.remove("in"); });
-      start();
-    }, 200 + n * 360 + 800);
+    function begin(){
+      if (started) return;
+      if (reduced){
+        root.classList.remove("intro"); started = true; place(false); schedule(INTERVAL); return;
+      }
+      originals.forEach(function(f, i){ setTimeout(function(){ f.classList.add("in"); }, 150 + i * 360); });
+      setTimeout(function(){
+        root.classList.remove("intro");
+        originals.forEach(function(f){ f.classList.remove("in"); });
+        started = true;
+        schedule(INTERVAL - 800);
+      }, 150 + n * 360 + 800);
+    }
+
+    if ("IntersectionObserver" in window){
+      new IntersectionObserver(function(entries){
+        visible = entries[0].isIntersecting;
+        if (visible) begin();
+        schedule(INTERVAL);
+      }, { threshold: 0.35 }).observe(root);
+    } else {
+      visible = true; begin();
+    }
+    place(false);
   })();
 
   document.addEventListener("submit", function(ev){
