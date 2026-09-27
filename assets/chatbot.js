@@ -96,7 +96,7 @@
     if (!GAS_URL || GAS_URL.indexOf("PASTE_") === 0) return;
     var payload = Object.assign({ type: type, session: sessionId(), page: location.pathname, ts: new Date().toISOString() }, data);
     try {
-      fetch(GAS_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
+      fetch(GAS_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) }).catch(function(){});
     } catch(e){}
   }
 
@@ -172,6 +172,38 @@
       scroll();
     }
 
+    function clearPrompts(){
+      body.querySelectorAll(".loop-chips").forEach(function(el){ el.remove(); });
+    }
+
+    function addFollowUp(){
+      addRow("bot", "Do you want to know more?");
+      var wrap = document.createElement("div");
+      wrap.className = "loop-chips loop-follow";
+      [["Yes", "yes"], ["No", "no"]].forEach(function(opt){
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "loop-chip " + opt[1];
+        b.textContent = opt[0];
+        b.addEventListener("click", function(){
+          clearPrompts();
+          addRow("user", opt[0]);
+          log("chatbot_log", { sender: "user", message: opt[0] });
+          var reply = opt[1] === "yes"
+            ? "Sure! Pick a topic below, or type your own question."
+            : "Thank you! आपका दिन शुभ हो।";
+          setTimeout(function(){
+            addRow("bot", reply);
+            log("chatbot_log", { sender: "bot", message: reply });
+            if (opt[1] === "yes") addChips();
+          }, 300);
+        });
+        wrap.appendChild(b);
+      });
+      body.appendChild(wrap);
+      scroll();
+    }
+
     function addLeadForm(){
       if (leadShown) return;
       leadShown = true;
@@ -219,6 +251,7 @@
       busy = true;
       sendBtn.disabled = true;
       input.value = "";
+      clearPrompts();
       addRow("user", text);
       history.push({ role: "user", content: text });
       userTurns++;
@@ -235,6 +268,7 @@
           history.push({ role: "assistant", content: answer });
           log("chatbot_log", { sender: "bot", message: answer });
           if (userTurns >= 2) addLeadForm();
+          addFollowUp();
           busy = false;
           sendBtn.disabled = false;
           input.focus();
