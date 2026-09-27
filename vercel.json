@@ -1,0 +1,10 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "redirects": [
+    { "source": "/about", "destination": "/experience", "permanent": true },
+    { "source": "/about.html", "destination": "/experience", "permanent": true },
+    { "source": "/work", "destination": "/case-studies", "permanent": true },
+    { "source": "/work.html", "destination": "/case-studies", "permanent": true }
+  ]
+}

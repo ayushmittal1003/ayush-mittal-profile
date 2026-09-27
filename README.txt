@@ -3,7 +3,7 @@ AYUSH MITTAL – PORTFOLIO WEBSITE
 Live: https://ayush-mittal-product.vercel.app  (Vercel project: ayush-mittal-product)
 
 What's here
-  index.html, about.html, work.html, contact.html   the 4 pages, each with its own SEO
+  index, experience, case-studies, contact (.html)  the 4 pages (served at /, /experience, /case-studies, /contact via vercel.json), each with its own SEO
                                                       title, description, keywords,
                                                       Open Graph and schema.org data
   assets/styles.css            site styles
